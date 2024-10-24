@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>What's my community in Los Angeles?</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.9.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.9.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.maskedinput/1.4.1/jquery.maskedinput.min.js"></script> -->
+    <script src="https://npmcdn.com/@turf/turf/turf.min.js"></script>
+    <script src="./js/papaparse.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.css"
+      type="text/css"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 -->
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+    <link rel="shortcut icon" href="" />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: #f9f9f9;
+      }
+
+      .geocoder {
+        width: 100%;
+      }
+
+      #searchbar {
+        height: 100%;
+        width: 100%;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-weight: bolder;
+      }
+
+      .shaded {
+        background-color: #f3f3f3;
+        padding: 5px;
+      }
+
+      .container {
+        background-color: #fff;
+        padding: 30px;
+        border: 1px solid #d7dde9;
+        box-shadow: 0px 2px 3px rgba(111, 111, 111, 0.5);
+        border-radius: 6px;
+      }
+
+      label {
+        font-size: 1.8rem !important;
+      }
+
+      li {
+        text-align: left;
+      }
+
+      .input {
+        -webkit-user-select: text; /* Chrome, Opera, Safari */
+        -moz-user-select: text; /* Firefox 2+ */
+        -ms-user-select: text; /* IE 10+ */
+        user-select: text; /* Standard syntax */
+      }
+
+      .mapboxgl-ctrl-geocoder {
+        width: auto;
+        font-size: 15px;
+        line-height: 20px;
+        max-width: 360px;
+        background-color: transparent;
+        -webkit-box-shadow: none;
+        box-shadow: none;
+        min-width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="section">
+      <div class="columns is-centered">
+        <div class="column is-half">
+          <div class="container has-text-centered is-max-desktop">
+            <h3 id="title" class="center is-size-2">
+              Stay Housed L.A. Locator
+            </h3>
+            <h4 id="title_description center is-size-5">
+              Find out what community and courthouse you are in
+            </h4>
+            <hr />
+            <div class="has-text-left my-4">
+              <p class="is-size-5 label">What is the address of the tenant?</p>
+              <div id="geocoder" class="geocoder input is-medium"></div>
+            </div>
+            <div id="results" class="has-text-centered" style="display: none">
+              <p id="address" class="is-size-5 shaded">Address</p>
+              <p id="community" class="is-size-5 mt-3 shaded">Community</p>
+              <p id="courthouse" class="is-size-5 mt-3 shaded">Courthouse</p>
+              <p id="supervisorial" class="is-size-5 mt-3 shaded">
+                Supervisorial District
+              </p>
+              <p id="lacitycouncil" class="is-size-5 mt-3 shaded">
+                LACITY Council District
+              </p>
+              <p id="cbos" class="is-size-5 mt-3 shaded"></p>
+              <div
+                id="programtype"
+                class="notification is-success is-light mt-4"
+              >
+                Supervisorial and LACITY Council Districts reflect recent
+                approved redistricting boundaries for 2022
+              </div>
+              <div class="notification is-info is-light mt-4">
+                Supervisorial and LACITY Council Districts reflect recent
+                approved redistricting boundaries for 2022
+              </div>
+              <hr />
+              <div id="ami">
+                <p class="is-size-5 label">
+                  What is the tenant's monthly income?
+                </p>
+                <p id="annualincome"></p>
+                <input
+                  class="input is-medium"
+                  id="incomeInput"
+                  type="text"
+                  placeholder="Enter Monthly Income"
+                />
+                <p class="is-size-5 label mt-3">
+                  What is their household size?
+                </p>
+                <div class="select is-fullwidth">
+                  <select id="familySize">
+                    <option value="0">Select family size</option>
+                    <option value="1">1 - one</option>
+                    <option value="2">2 - two</option>
+                    <option value="3">3 - three</option>
+                    <option value="4">4 - four</option>
+                    <option value="5">5 - five</option>
+                    <option value="6">6 - six</option>
+                    <option value="7">7 - seven</option>
+                    <option value="8">8+ - more than 8</option>
+                  </select>
+                </div>
+                <div class="has-text-centered mt-3">
+                  <div
+                    id="buttonAMI"
+                    class="button is-dark is-centered"
+                    onclick="handleAMI()"
+                  >
+                    Calculate
+                  </div>
+                  <div id="calculateWarning" class="mt-3"></div>
+                  <div id="amiResult" class="mt-3"></div>
+                </div>
+                <div id="amiTable"></div>
+              </div>
+            </div>
+
+            <p id="credit" class="mt-3">
+              Made for LA by
+              <a href="http://www.theworks.la" target="_blank">theworksLA</a> |
+              <a id="modalbutton" class="modal-trigger" href="#modal1"
+                >Data Sources</a
+              >
+            </p>
+          </div>
+
+          <div id="modal1" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+              <div class="modal-card-body">
+                <div id="model_lang" class="content">
+                  <h4>Data Sources</h4>
+                  <p>
+                    This tool uses the
+                    <a
+                      href="https://data.lacounty.gov/dataset/City-Boundaries/eywn-daeu"
+                      target="_blank"
+                      >City/Community Boundaries from the LA County Data
+                      Portal</a
+                    >
+                    to determine if you are in a city or unincorporated area of
+                    LA County
+                  </p>
+                  <p>
+                    Address search uses
+                    <a
+                      href="https://docs.mapbox.com/api/search/"
+                      target="_blank"
+                      >Mapbox Geocoding Services</a
+                    >
+                  </p>
+                  <p>
+                    2023 Median Family Income:
+                    <a
+                      href="https://www.huduser.gov/portal/datasets/il/il2023/2023summary.odn?STATES=6.0&INPUTNAME=METRO31080MM4480*0603799999%2BLos+Angeles+County&statelist=&stname=California&wherefrom=%24wherefrom%24&statefp=06&year=2023&ne_flag=&selection_type=county&incpath=%24incpath%24&data=2023&SubmitButton=View+County+Calculations"
+                      target="_blank"
+                      >2023 AMI (HUD)</a
+                    >
+                  </p>
+                  <p>
+                    <a href="https://turfjs.org/" target="_blank">turf.js</a> is
+                    used for in browser spatial analysis
+                  </p>
+                  <p>
+                    Data Privacy: Addresses entered on this tool are not logged
+                    and is only used to geocode the latitude and longitude
+                    coordinates.
+                  </p>
+                </div>
+                <div class="button is-dark" id="closemodal">Close</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var formatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoibGFjb3VudHl0ZW5hbnQiLCJhIjoiY2s4ODlhbDJjMDM3MjNpcDV6YjhtY2preiJ9.LKtSBv_dZX1FI-eIotoZ_w"; //Key from Tenant Protections Map Account
+
+      var communityGeoJSON = "./data/lacounty_communities_boundary.geojson";
+      var courthouseGeoJSON = "./data/lacounty_judicial_districts.geojson";
+      var supervisorialGeoJSON = "./data/lacounty_supervisorial2021.geojson";
+      var supervisorialOldBoundariesGeoJSON =
+        "./data/lacounty_supervisorial2021.geojson";
+      var lacitycouncilGeoJSON =
+        "./data/lacity_council_2021_boundaries.geojson";
+      var lacitycouncilOldBoundariesGeoJSON =
+        "./data/lacity_council_2021_boundaries.geojson";
+
+      var user_location; //Stores search results
+      var geocoder = new MapboxGeocoder({
+        accessToken: mapboxgl.accessToken,
+        placeholder: "Enter your address here", //Text for search area
+        proximity: { longitude: -118.2517, latitude: 34.0545 },
+        country: "us",
+        bbox: [-119.2987, 33.2368, -117.2882, 35.1675],
+      });
+
+      //Adds geocoder to the page
+      geocoder.addTo("#geocoder");
+      geocoder.on("result", function (ev) {
+        var address = ev.result.place_name;
+        user_location = ev.result.geometry.coordinates;
+
+        var zip_step = address.match(/(California .*?,)/g);
+        var zip = zip_step[0].match(/\d+/g)
+        console.log(zip)
+        // var zip = address.match(/(?<=California ).*(?=, U)/);
+        // var zip;
+        // var regex = /(?<=California ).*(?=, U)/g;
+        // var match = regex.exec(address);
+        // zip = match;
+
+        // zipCheck(address);
+        // console.log(zip);
+        $("#results").show();
+        getCommunity();
+        getCourthouse();
+        getSupervisorial();
+        $("#lacitycouncil").hide();
+        getLACITYCouncil();
+        getCBOs(zip);
+        // handleAMI(1, 5000);
+        $("#address")
+          .empty()
+          .html("<code>Address:</code><br>" + address);
+      });
+
+      var list = [
+        ["SAJE", "#9e0142"],
+        ["LA CAN", "#d53e4f"],
+        ["Inquilinos Unidos", "#f46d43"],
+        ["EYCEJ", "#fdae61"],
+        ["CES", "#fee08b"],
+        ["Eastside LEADS", "#e6f598"],
+        ["CBE", "#de77ae"],
+        ["LiBRE", "#66c2a5"],
+        ["LACCLA", "#3288bd"],
+        ["SJLI", "#5e4fa2"],
+        ["POWER", "#7fbc41"],
+        ["ACCE", "#238443"],
+        ["PEOC", "orange"],
+      ];
+
+      //Function to determine community from latlng coordinates
+      var features = [];
+
+      function getCommunity() {
+        $.getJSON(communityGeoJSON, function (data) {
+          var turf_point = turf.point(user_location, {}); //x,y
+          features = data.features;
+
+          var commtype;
+
+          for (var i = 0, len = features.length; i < len; i++) {
+            var isInside = turf.booleanPointInPolygon(turf_point, features[i]);
+
+            if (isInside) {
+              commtype =
+                features[i].properties["comm_type"] == "City"
+                  ? "City of " + features[i].properties.name
+                  : "Unincorporated " + features[i].properties.name;
+
+              console.log(commtype);
+              $("#community")
+                .empty()
+                .html("<code>Community:</code><br>" + commtype);
+            }
+          }
+
+          var programType = commtype.includes("Unincorporated")
+            ? `This area is served by our LACOUNTY Program, which limits free legal help to households making less than 80% AMI (see chart below).
+            <br>Tenant must have received a document to apply (Summons and Complaint, Notice of Unlawful Detainer, Notice to Vacate)`
+            : commtype.includes("City of LOS ANGELES")
+            ? `This area is served by our LACITY Program, which limits free legal help to households making less than 80% AMI (see chart below).
+            <br>Tenant must have received a document to apply (Summons and Complaint, Notice of Unlawful Detainer, Notice to Vacate)`
+            : commtype.includes("City of LONG BEACH")
+            ? `This area is served by our LONG BEACH Program, which limits free legal help to households making less than 80% AMI (see chart below).
+            <br>Tenant must have received a document to apply (Summons and Complaint, Notice of Unlawful Detainer, Notice to Vacate)`
+            : commtype.includes("City of SANTA MONICA")
+            ? `This area is served by our SANTA MONICA Program, which limits free legal help to households making less than 80% AMI (see chart below).
+            <br>Tenant must have received a document to apply (Summons and Complaint, Notice of Unlawful Detainer, Notice to Vacate)`
+            : `This area is served by our LACOUNTY Program, which limits free legal help to households making less than 80% AMI (see chart below).
+            <br>Tenant must have received a document to apply (Summons and Complaint, Notice of Unlawful Detainer, Notice to Vacate)`;
+
+          $("#programtype").empty().html(programType);
+        });
+      }
+
+      function getCourthouse() {
+        $.getJSON(courthouseGeoJSON, function (data) {
+          var turf_point = turf.point(user_location, {}); //x,y
+          features = data.features;
+
+          for (var i = 0, len = features.length; i < len; i++) {
+            var isInside = turf.booleanPointInPolygon(turf_point, features[i]);
+
+            if (isInside) {
+              $("#courthouse")
+                .empty()
+                .html(
+                  "<code>Courthouse:</code><br/>" +
+                    features[i].properties.courthouse
+                );
+            }
+          }
+        });
+      }
+
+      function getSupervisorial() {
+        $.getJSON(supervisorialGeoJSON, function (data) {
+          var turf_point = turf.point(user_location, {}); //x,y
+          features = data.features;
+
+          for (var i = 0, len = features.length; i < len; i++) {
+            var isInside = turf.booleanPointInPolygon(turf_point, features[i]);
+
+            if (isInside) {
+              $("#supervisorial")
+                .empty()
+                .html(
+                  "<code>Supervisorial District:</code><br/>" +
+                    features[i].properties.LONGNAME
+                );
+            }
+          }
+        });
+      }
+
+      function getLACITYCouncil() {
+        $.getJSON(lacitycouncilGeoJSON, function (data) {
+          var turf_point = turf.point(user_location, {}); //x,y
+          features = data.features;
+          for (var i = 0, len = features.length; i < len; i++) {
+            var isInside = turf.booleanPointInPolygon(turf_point, features[i]);
+            console.log(isInside);
+            if (isInside) {
+              $("#lacitycouncil").show();
+              $("#lacitycouncil")
+                .empty()
+                .html(
+                  "<code>LACITY Council District:</code><br/>" +
+                    features[i].properties.name
+                );
+            }
+          }
+        });
+      }
+
+      function getLACITYCouncilOldBoundaries() {
+        $.getJSON(lacitycouncilGeoJSON, function (data) {
+          var turf_point = turf.point(user_location, {}); //x,y
+          features = data.features;
+          for (var i = 0, len = features.length; i < len; i++) {
+            var isInside = turf.booleanPointInPolygon(turf_point, features[i]);
+            console.log(isInside);
+            if (isInside) {
+              $("#lacitycouncil")
+                .empty()
+                .html(
+                  "LACITY Council District:<br/>" + features[i].properties.name
+                );
+            }
+          }
+        });
+      }
+
+      function getCBOs(zip) {
+        $("#cbos").empty();
+        const csvfile = "./data/cbo_assignments.csv";
+        Papa.parse(csvfile, {
+          header: true,
+          download: true,
+          dynamicTyping: true,
+          complete: function (results) {
+            console.log(results.data);
+            var selectedCBOs = "";
+            if (zip.length != 0) {
+              for (let i = 0; i < results.data.length; i++) {
+                if (zip[0] == results.data[i].zipcode.toString()) {
+                  console.log(results.data[i]);
+                  selectedCBOs += results.data[i].org;
+                  selectedCBOs += ", ";
+                  console.log(selectedCBOs);
+                }
+              }
+
+              var htmlload =
+                selectedCBOs.length != 0
+                  ? "<code>CBOs servicing area:</code><br/> " + selectedCBOs
+                  : "<code>CBOs servicing area:</code><br/> There are no CBO's servicing the area";
+
+              $("#cbos").empty().html(htmlload);
+            }
+          },
+        });
+      }
+
+      function createAMItable() {
+        var tablerows = "";
+
+        $.getJSON("./data/ami_2021.json", function (amiJSON) {
+          for (var i = 0; i < amiJSON.length; i++) {
+            tablerows += `
+            <tr>
+              <td>${amiJSON[i].household_size}</td>
+              <td>${formatter.format(amiJSON[i]["30%"])}</td>
+              <td>${formatter.format(amiJSON[i]["50%"])}</td>
+              <td>${formatter.format(amiJSON[i]["80%"])}</td>
+            </tr>
+              `;
+          }
+
+          var html = `
+            <hr/>
+            <p class="label is-size-5 has-text-centered">2023 AMI Reference Table</p>
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Family Size</th>
+                            <th>30%</th>
+                            <th>50%</th>
+                            <th>80%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tablerows}
+                    </tbody>
+                </table>
+            </div>
+            `;
+          $("#amiTable").empty().html(html);
+        });
+      }
+
+      //Listener for modal for data sources
+      $(document).ready(function () {
+        document
+          .getElementById("modalbutton")
+          .addEventListener("click", function () {
+            console.log("click");
+            $(".modal").toggleClass("is-active");
+          });
+
+        document
+          .getElementById("closemodal")
+          .addEventListener("click", function () {
+            console.log("click");
+            $(".modal").toggleClass("is-active");
+          });
+
+        createAMItable();
+      });
+
+      function handleAMI() {
+        var household_size_selector = document.getElementById("familySize");
+        var household_size = household_size_selector.value;
+
+        var incomeInput = document.getElementById("incomeInput");
+        var setIncome = incomeInput.value;
+
+        if (household_size.length != 0 && setIncome.length != 0) {
+          $.getJSON("./data/ami_2021.json", function (amiJSON) {
+            var ami_range = amiJSON;
+            console.log(ami_range);
+            var income = Number(setIncome) * 12;
+            var size = Number(household_size);
+            var ami_score = null;
+            console.log(income);
+            console.log(size);
+            var ami_row = ami_range.find((el) => el.household_size === size);
+            // console.log(ami_row)
+            if (income > ami_row["80%"]) {
+              ami_score = {
+                title: "Above 80%",
+                referenceID: "above80_ami",
+              };
+            } else if (income < ami_row["80%"] && income > ami_row["50%"]) {
+              ami_score = {
+                title: "Between 50% and 80%",
+                referenceID: "between50and80_ami",
+              };
+            } else if (income < ami_row["50%"] && income > ami_row["30%"]) {
+              ami_score = {
+                title: "Between 30% and 50%",
+                referenceID: "between30and50_ami",
+              };
+            } else {
+              ami_score = {
+                title: "Less than 30%",
+                referenceID: "lessthan30_ami",
+              };
+            }
+
+            $("#amiResult").empty().html(`
+                <div class="notification is-success is-light is-size-5">
+                    <p>Annual Income: ${formatter.format(income)}</p>
+                    <p>AMI is ${ami_score.title}</p>
+                </div>
+                
+            `);
+            console.log(ami_score);
+          });
+        } else {
+          $("#calculateWarning").empty().html(`
+            <div class="notification label is-warning">
+                Please enter the monthly income and select the household size
+                </div>
+                `);
+        }
+      }
+    </script>
+  </body>
+</html>
